@@ -101,7 +101,7 @@ class DLibHOGDetector {
       LOG(WARNING) << "No modle path or input file path";
       return 0;
     }
-    cv::Mat src_img = cv::imread(path, CV_LOAD_IMAGE_COLOR);
+    cv::Mat src_img = cv::imread(path, CV_IMREAD_COLOR);
     if (src_img.empty())
       return 0;
     int img_width = src_img.cols;
