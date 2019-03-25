@@ -16,6 +16,8 @@
     $ ./envsetup
 
 ### Prerequisites
+* Download OpenCV android sdk https://sourceforge.net/projects/opencvlibrary/files/latest/download. Put contents of sdk `native` folder to `third_party/opencv`
+
 * Download Android-NDK from [Android website](https://developer.android.com/ndk/downloads/index.html).
 
 	 After downloading, go to the directory to which you downloaded the package to extract it
