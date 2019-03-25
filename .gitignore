@@ -6,3 +6,7 @@ obj/
 *.bin
 /travis-ci/android-ndk
 libs/
+
+# Sublime text files
+*.sublime-project
+*.sublime-workspace
