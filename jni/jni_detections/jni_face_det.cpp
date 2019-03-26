@@ -155,7 +155,7 @@ jint JNIEXPORT JNICALL DLIB_FACE_JNI_METHOD(jniInit)(JNIEnv* env, jobject thiz,
   std::string recognitionPath = jniutils::convertJStrToString(env, jRecognitionPath);
   DetectorPtr detPtr = new DLibHOGFaceDetector(landmarkPath, recognitionPath);
   setDetectorPtr(env, thiz, detPtr);
-  ;
+
   return JNI_OK;
 }
 
@@ -164,6 +164,33 @@ jint JNIEXPORT JNICALL
   LOG(INFO) << "jniDeInit";
   setDetectorPtr(env, thiz, JAVA_NULL);
   return JNI_OK;
+}
+
+JNIEXPORT jfloatArray JNICALL DLIB_FACE_JNI_METHOD(jniBitmapFaceEmbed)(
+        JNIEnv* env, jobject thiz, jobject bitmap) {
+    LOG(INFO) << "jniBitmapFaceEmbed";
+    cv::Mat rgbaMat;
+    cv::Mat bgrMat;
+    jniutils::ConvertBitmapToRGBAMat(env, bitmap, rgbaMat, true);
+    cv::cvtColor(rgbaMat, bgrMat, cv::COLOR_RGBA2BGR);
+
+    DetectorPtr detPtr = getDetectorPtr(env, thiz);
+    std::vector<float> hash = detPtr->embed(bgrMat);
+
+    if(hash.size() > 0) {
+        int size = 128;
+        jfloat hashArray[size];
+        for (int i = 0; i < size; i++) {
+            hashArray[i] = hash[i];
+        }
+
+        jfloatArray result;
+        result = env->NewFloatArray(size);
+        env->SetFloatArrayRegion(result, 0, size, hashArray);
+        return result;
+    } else {
+        return JAVA_NULL;
+    }
 }
 
 #ifdef __cplusplus
