@@ -148,10 +148,12 @@ JNIEXPORT jobjectArray JNICALL
 }
 
 jint JNIEXPORT JNICALL DLIB_FACE_JNI_METHOD(jniInit)(JNIEnv* env, jobject thiz,
-                                                     jstring jLandmarkPath) {
+                                                     jstring jLandmarkPath,
+                                                     jstring jRecognitionPath) {
   LOG(INFO) << "jniInit";
   std::string landmarkPath = jniutils::convertJStrToString(env, jLandmarkPath);
-  DetectorPtr detPtr = new DLibHOGFaceDetector(landmarkPath);
+  std::string recognitionPath = jniutils::convertJStrToString(env, jRecognitionPath);
+  DetectorPtr detPtr = new DLibHOGFaceDetector(landmarkPath, recognitionPath);
   setDetectorPtr(env, thiz, detPtr);
   ;
   return JNI_OK;

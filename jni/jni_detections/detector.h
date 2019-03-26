@@ -126,7 +126,9 @@ class DLibHOGDetector {
 class DLibHOGFaceDetector : public DLibHOGDetector {
  private:
   string mLandMarkModel;
+  string mRecognitionModel;
   shape_predictor msp;
+  anet_type mr;
   unordered_map<int, full_object_detection> mFaceShapeMap;
   frontal_face_detector mFaceDetector;
 
@@ -138,12 +140,16 @@ class DLibHOGFaceDetector : public DLibHOGDetector {
  public:
   DLibHOGFaceDetector() { init(); }
 
-  DLibHOGFaceDetector(const string& landmarkmodel)
-      : mLandMarkModel(landmarkmodel) {
+  DLibHOGFaceDetector(const string& landmarkmodel, const string& recognitionmodel)
+      : mLandMarkModel(landmarkmodel), mRecognitionModel(recognitionmodel) {
     init();
     if (!mLandMarkModel.empty() && jniutils::fileExists(mLandMarkModel)) {
       deserialize(mLandMarkModel) >> msp;
       LOG(INFO) << "Load landmarkmodel from " << mLandMarkModel;
+    }
+    if (mRecognitionModel.empty() && jniutils::fileExists(mRecognitionModel)) {
+      deserialize(mRecognitionModel) >> mr;
+      LOG(INFO) << "Load recognition model from " << mRecognitionModel;
     }
   }
 
@@ -182,55 +188,9 @@ class DLibHOGFaceDetector : public DLibHOGDetector {
     return mRets.size();
   }
 
-  unordered_map<int, full_object_detection>& getFaceShapeMap() {
-    return mFaceShapeMap;
-  }
-};
-
-/*
- * DLib face detect and face feature extractor
- */
-class DLibFaceEmbedder {
- private:
-  std::vector<rectangle> mRets;
-  string mLandmarkModel;
-  string mRecognitionModel;
-  shape_predictor sp_net;
-  anet_type r_net;
-  frontal_face_detector mFaceDetector;
-
-  inline void init() {
-    LOG(INFO) << "Init mFaceDetector";
-    mFaceDetector = get_frontal_face_detector();
-  }
-
- public:
-  DLibFaceEmbedder() { init(); }
-
-  DLibFaceEmbedder(const string& landmarkmodel, const string& recognitionmodel)
-      : mLandmarkModel(landmarkmodel), mRecognitionModel(recognitionmodel) {
-    init();
-    if (!mLandmarkModel.empty() && jniutils::fileExists(mLandmarkModel)) {
-      deserialize(mLandmarkModel) >> sp_net;
-      LOG(INFO) << "Load landmark model from " << mLandmarkModel;
-    }
-    if (mRecognitionModel.empty() && jniutils::fileExists(mRecognitionModel)) {
-      deserialize(mRecognitionModel) >> r_net;
-      LOG(INFO) << "Load recognition model from " << mRecognitionModel;
-    }
-  }
-
-  virtual inline int embed(const string& path) {
-    cv::Mat src_img = cv::imread(path, cv::IMREAD_COLOR);
-    return embed(src_img);
-  }
-
-  // The format of mat should be BGR or Gray
-  // If converting 4 channels to 3 channls because the format could be BGRA or
-  // ARGB
-  virtual inline int embed(const cv::Mat& image) {
+  virtual inline std::vector<float> embed(const cv::Mat& image) {
     if (image.empty())
-      return 0;
+      return std::vector<float>();
 
     if (image.channels() == 1) {
       cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
@@ -240,12 +200,19 @@ class DLibFaceEmbedder {
     cv_image<bgr_pixel> img(image);
     mRets = mFaceDetector(img);
 
-    if (mRets.size() != 0 && mLandmarkModel.empty() == false) {
+    if (mRets.size() != 0 && mLandMarkModel.empty() == false) {
         // Best score detection should be first
-        full_object_detection shape = sp_net(img, mRets[0]);
+        full_object_detection shape = msp(img, mRets[0]);
         matrix<rgb_pixel> face_chip;
         extract_image_chip(img, get_face_chip_details(shape,150,0.25), face_chip);
+        matrix<float,0,1> face_descriptor = mr(face_chip);
+        return std::vector<float>(face_descriptor.begin(), face_descriptor.end());
     }
-    return mRets.size();
+    return std::vector<float>();
+  }
+
+  unordered_map<int, full_object_detection>& getFaceShapeMap() {
+    return mFaceShapeMap;
   }
 };
+
