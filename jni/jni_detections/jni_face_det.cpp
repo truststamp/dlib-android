@@ -147,7 +147,7 @@ JNIEXPORT jobjectArray JNICALL
   return getDetectResult(env, detPtr, size);
 }
 
-jint JNIEXPORT JNICALL DLIB_FACE_JNI_METHOD(jniInit)(JNIEnv* env, jobject thiz,
+JNIEXPORT jint JNICALL DLIB_FACE_JNI_METHOD(jniInit)(JNIEnv* env, jobject thiz,
                                                      jstring jLandmarkPath,
                                                      jstring jRecognitionPath) {
   LOG(INFO) << "jniInit";
@@ -159,7 +159,7 @@ jint JNIEXPORT JNICALL DLIB_FACE_JNI_METHOD(jniInit)(JNIEnv* env, jobject thiz,
   return JNI_OK;
 }
 
-jint JNIEXPORT JNICALL
+JNIEXPORT jint JNICALL
     DLIB_FACE_JNI_METHOD(jniDeInit)(JNIEnv* env, jobject thiz) {
   LOG(INFO) << "jniDeInit";
   setDetectorPtr(env, thiz, JAVA_NULL);
