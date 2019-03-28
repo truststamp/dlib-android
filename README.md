@@ -50,6 +50,15 @@ Alternative way to build native code and copy to the Android Studio's project ma
     $ cp -r libs/* androidstudio-examples/dlib-android-app/dlib/src/main/jniLibs
 ```
 
+Build dlib manually for arm in `Release` mode
+```
+Build for armh
+cmake -DBUILD_SHARED_LIBS=1 -DDLIB_NO_GUI_SUPPORT=on -DCMAKE_C_FLAGS="-O3 -mfpu=neon -fprofile-use -DENABLE_NEON" -DCMAKE_C_COMPILER=/usr/bin/arm-linux-gnueabihf-gcc -DCMAKE_CXX_COMPILER=/usr/bin/arm-linux-gnueabihf-g++ -DCMAKE_CXX_FLAGS="-std=c++11" --config Release --build ../dlib
+
+Build for arm64
+cmake -DBUILD_SHARED_LIBS=1 -DDLIB_NO_GUI_SUPPORT=on -DCMAKE_C_FLAGS="-O3 -fprofile-use -DENABLE_NEON" -DCMAKE_C_COMPILER=/usr/bin/aarch64-linux-gnu-gcc -DCMAKE_CXX_COMPILER=/usr/bin/aarch64-linux-gnu-g++ -DCMAKE_CXX_FLAGS="-std=c++11" --config Release --build ../dlib
+```
+
 ### Run Android application
 * Open Android Studio's projects in androidstudio-examples/dlib-android-app to run face detection, face landmark, and so on
 
