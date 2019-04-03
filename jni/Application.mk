@@ -1,6 +1,6 @@
 NDK_TOOLCHAIN_VERSION := clang
 APP_OPTIM=release
-APP_ABI := armeabi-v7a arm64-v8a x86
+APP_ABI := armeabi-v7a arm64-v8a x86 x86_64
 APP_CPPFLAGS := -std=c++11 -frtti -fexceptions
 APP_PLATFORM := android-28
 APP_STL := c++_shared

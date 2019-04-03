@@ -189,6 +189,8 @@ class DLibHOGFaceDetector : public DLibHOGDetector {
   }
 
   virtual inline std::vector<float> embed(const cv::Mat& image) {
+    LOG(INFO) << "start embedding";
+
     if (image.empty())
       return std::vector<float>();
 
@@ -198,14 +200,20 @@ class DLibHOGFaceDetector : public DLibHOGDetector {
     CHECK(image.channels() == 3);
 
     cv_image<bgr_pixel> img(image);
+    LOG(INFO) << "preparation finished";
+
     mRets = mFaceDetector(img);
+    LOG(INFO) << "face detected";
 
     if (mRets.size() != 0 && mLandMarkModel.empty() == false) {
         // Best score detection should be first
         full_object_detection shape = msp(img, mRets[0]);
+        LOG(INFO) << "landmarks detected";
         matrix<rgb_pixel> face_chip;
         extract_image_chip(img, get_face_chip_details(shape,150,0.25), face_chip);
+        LOG(INFO) << "image chip extracted";
         matrix<float,0,1> face_descriptor = mr(face_chip);
+        LOG(INFO) << "embedding finished";
         return std::vector<float>(face_descriptor.begin(), face_descriptor.end());
     }
     return std::vector<float>();
