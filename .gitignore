@@ -10,7 +10,3 @@ libs/
 # Sublime text files
 *.sublime-project
 *.sublime-workspace
-
-# dlib build folders
-built-dlib/
-dlib-so/
