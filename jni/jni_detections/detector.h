@@ -59,6 +59,7 @@ using anet_type = loss_metric<fc_no_bias<128,avg_pool_everything<
                             input_rgb_image_sized<150>
                             >>>>>>>>>>>>;
 
+
 void throwException(JNIEnv* env,
                     const char* message) {
     jclass Exception = env->FindClass("java/lang/RuntimeException");

@@ -25,17 +25,4 @@ endif
 
 include $(BUILD_SHARED_LIBRARY)
 
-
-TOP_LEVEL_PATH := $(abspath $(LOCAL_PATH)/..)
-$(info TOP Level Path: $(TOP_LEVEL_PATH))
-
-EXT_INSTALL_PATH = $(TOP_LEVEL_PATH)/third_party
-
-OPENCV_PATH = $(EXT_INSTALL_PATH)/opencv/jni
-OPENCV_INCLUDE_DIR = $(OPENCV_PATH)/include
-
-MINIGLOG_LIB_TYPE := STATIC
-MINI_GLOG_PATH = $(EXT_INSTALL_PATH)/miniglog
-include $(MINI_GLOG_PATH)/Android.mk
-
 include $(SUB_MK_FILES)
