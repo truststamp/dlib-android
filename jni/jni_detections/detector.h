@@ -23,9 +23,13 @@
 #include <jni.h>
 #include <memory>
 #include <stdio.h>
+#include <android/log.h>
 
 using namespace std;
 using namespace dlib;
+
+#define LOGI(...) \
+((void)__android_log_print(ANDROID_LOG_INFO, "dlib-jni:", __VA_ARGS__))
 
 template <template <int,template<typename>class,int,typename> class block, int N, template<typename>class BN, typename SUBNET>
 using residual = add_prev1<block<N,BN,1,tag1<SUBNET>>>;
@@ -55,75 +59,57 @@ using anet_type = loss_metric<fc_no_bias<128,avg_pool_everything<
                             input_rgb_image_sized<150>
                             >>>>>>>>>>>>;
 
-class DLibHOGDetector {
- private:
-  typedef scan_fhog_pyramid<pyramid_down<6>> image_scanner_type;
-  object_detector<image_scanner_type> mObjectDetector;
+void throwException(JNIEnv* env,
+                    const char* message) {
+    jclass Exception = env->FindClass("java/lang/RuntimeException");
+    env->ThrowNew(Exception, message);
+}
 
-  inline void init() {
-    LOG(INFO) << "Model Path: " << mModelPath;
-    if (jniutils::fileExists(mModelPath)) {
-      deserialize(mModelPath) >> mObjectDetector;
-    } else {
-      LOG(INFO) << "Not exist " << mModelPath;
-    }
-  }
+void convertBitmapToArray2d(JNIEnv* env,
+                            jobject bitmap,
+                            dlib::array2d<dlib::rgb_pixel>& out) {
+    AndroidBitmapInfo bitmapInfo;
+    void* pixels;
+    int state;
 
- public:
-  DLibHOGDetector(const string& modelPath = "/sdcard/person.svm")
-      : mModelPath(modelPath) {
-    init();
-  }
-
-  virtual inline int det(const string& path) {
-    using namespace jniutils;
-    if (!fileExists(mModelPath) || !fileExists(path)) {
-      LOG(WARNING) << "No modle path or input file path";
-      return 0;
-    }
-    cv::Mat src_img = cv::imread(path, cv::IMREAD_COLOR);
-    if (src_img.empty())
-      return 0;
-    int img_width = src_img.cols;
-    int img_height = src_img.rows;
-    int im_size_min = MIN(img_width, img_height);
-    int im_size_max = MAX(img_width, img_height);
-
-    float scale = float(INPUT_IMG_MIN_SIZE) / float(im_size_min);
-    if (scale * im_size_max > INPUT_IMG_MAX_SIZE) {
-      scale = (float)INPUT_IMG_MAX_SIZE / (float)im_size_max;
+    if (0 > (state = AndroidBitmap_getInfo(env, bitmap, &bitmapInfo))) {
+        LOGI("L%d: AndroidBitmap_getInfo() failed! error=%d", __LINE__, state);
+        throwException(env, "AndroidBitmap_getInfo() failed!");
+        return;
+    } else if (bitmapInfo.format != ANDROID_BITMAP_FORMAT_RGBA_8888) {
+        LOGI("L%d: Bitmap format is not RGB_565!", __LINE__);
+        throwException(env, "Bitmap format is not RGB_565!");
     }
 
-    if (scale != 1.0) {
-      cv::Mat outputMat;
-      cv::resize(src_img, outputMat,
-                 cv::Size(img_width * scale, img_height * scale));
-      src_img = outputMat;
+    // Lock the bitmap for copying the pixels safely.
+    if (0 > (state = AndroidBitmap_lockPixels(env, bitmap, &pixels))) {
+        LOGI("L%d: AndroidBitmap_lockPixels() failed! error=%d", __LINE__, state);
+        throwException(env, "AndroidBitmap_lockPixels() failed!");
+        return;
     }
 
-    // cv::resize(src_img, src_img, cv::Size(320, 240));
-    cv_image<bgr_pixel> cimg(src_img);
+    LOGI("L%d: info.width=%d, info.height=%d", __LINE__, bitmapInfo.width, bitmapInfo.height);
+    out.set_size((long) bitmapInfo.height, (long) bitmapInfo.width);
 
-    double thresh = 0.5;
-    mRets = mObjectDetector(cimg, thresh);
-    return mRets.size();
-  }
+    char* line = (char*) pixels;
+    for (int h = 0; h < bitmapInfo.height; ++h) {
+        for (int w = 0; w < bitmapInfo.width; ++w) {
+            uint32_t* color = (uint32_t*) (line + 4 * w);
 
-  inline std::vector<rectangle> getResult() { return mRets; }
+            out[h][w].red = (unsigned char) (0xFF & ((*color) >> 24));
+            out[h][w].green = (unsigned char) (0xFF & ((*color) >> 16));
+            out[h][w].blue = (unsigned char) (0xFF & ((*color) >> 8));
+        }
 
-  virtual ~DLibHOGDetector() {}
+        line = line + bitmapInfo.stride;
+    }
 
- protected:
-  std::vector<rectangle> mRets;
-  string mModelPath;
-  const int INPUT_IMG_MAX_SIZE = 800;
-  const int INPUT_IMG_MIN_SIZE = 600;
-};
+    // Unlock the bitmap.
+    AndroidBitmap_unlockPixels(env, bitmap);
+}
 
-/*
- * DLib face detect and face feature extractor
- */
-class DLibHOGFaceDetector : public DLibHOGDetector {
+
+class DLibHOGFaceDetector {
  private:
   string mLandMarkModel;
   string mRecognitionModel;
@@ -131,6 +117,7 @@ class DLibHOGFaceDetector : public DLibHOGDetector {
   anet_type mr;
   unordered_map<int, full_object_detection> mFaceShapeMap;
   frontal_face_detector mFaceDetector;
+  std::vector<rectangle> mRets;
 
   inline void init() {
     LOG(INFO) << "Init mFaceDetector";
@@ -158,6 +145,8 @@ class DLibHOGFaceDetector : public DLibHOGDetector {
     cv::Mat src_img = cv::imread(path, cv::IMREAD_COLOR);
     return det(src_img);
   }
+
+  inline std::vector<rectangle> getResult() { return mRets; }
 
   // The format of mat should be BGR or Gray
   // If converting 4 channels to 3 channls because the format could be BGRA or
@@ -188,18 +177,14 @@ class DLibHOGFaceDetector : public DLibHOGDetector {
     return mRets.size();
   }
 
-  virtual inline std::vector<float> embed(const cv::Mat& image) {
+  virtual inline std::vector<float> embed(JNIEnv* env, jobject bitmap) {
     LOG(INFO) << "start embedding";
 
-    if (image.empty())
-      return std::vector<float>();
+    array2d<rgb_pixel> arr2d;
+    convertBitmapToArray2d(env, bitmap, arr2d);
+    matrix<rgb_pixel> img;
+    img = mat(arr2d);
 
-    if (image.channels() == 1) {
-      cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
-    }
-    CHECK(image.channels() == 3);
-
-    cv_image<bgr_pixel> img(image);
     LOG(INFO) << "preparation finished";
 
     mRets = mFaceDetector(img);
@@ -214,6 +199,7 @@ class DLibHOGFaceDetector : public DLibHOGDetector {
         LOG(INFO) << "image chip extracted";
         matrix<float,0,1> face_descriptor = mr(face_chip);
         LOG(INFO) << "embedding finished";
+        LOG(INFO) << face_descriptor;
         return std::vector<float>(face_descriptor.begin(), face_descriptor.end());
     }
     return std::vector<float>();

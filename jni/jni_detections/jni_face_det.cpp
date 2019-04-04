@@ -169,13 +169,9 @@ JNIEXPORT jint JNICALL
 JNIEXPORT jfloatArray JNICALL DLIB_FACE_JNI_METHOD(jniBitmapFaceEmbed)(
         JNIEnv* env, jobject thiz, jobject bitmap) {
     LOG(INFO) << "jniBitmapFaceEmbed";
-    cv::Mat rgbaMat;
-    cv::Mat bgrMat;
-    jniutils::ConvertBitmapToRGBAMat(env, bitmap, rgbaMat, true);
-    cv::cvtColor(rgbaMat, bgrMat, cv::COLOR_RGBA2BGR);
 
     DetectorPtr detPtr = getDetectorPtr(env, thiz);
-    std::vector<float> hash = detPtr->embed(bgrMat);
+    std::vector<float> hash = detPtr->embed(env, bitmap);
 
     if(hash.size() > 0) {
         int size = 128;
