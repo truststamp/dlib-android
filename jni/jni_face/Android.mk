@@ -1,10 +1,11 @@
 LOCAL_PATH := $(call my-dir)
 
 # =======================================================
+include $(CLEAR_VARS)
 LOCAL_MODULE := dlib_face_jni
 
 LOCAL_SRC_FILES += \
-           exceptuon.cpp \
+           exception.cpp \
            profiler.cpp \
            face.cpp
 
